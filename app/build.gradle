@@ -1,0 +1,123 @@
+apply plugin: 'com.android.application'
+apply plugin: 'kotlin-kapt'
+apply plugin: 'kotlin-android'
+apply plugin: 'kotlin-android-extensions'
+apply plugin: 'com.apollographql.apollo'
+
+android {
+    compileSdkVersion versions.compileSdk
+
+    defaultConfig {
+        applicationId "com.shopify.mobile.basketball.storefront"
+        minSdkVersion versions.minSdk
+        targetSdkVersion versions.targetSdk
+        versionCode 1
+        versionName "1.0"
+
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    apollo {
+        generateKotlinModels.set(true)
+        suppressRawTypesWarning = true
+        customTypeMapping = [
+            "DateTime" : "java.util.Date",
+            "URL" : "kotlin.String",
+            "Decimal" : "kotlin.Double"
+        ]
+    }
+
+    compileOptions {
+        sourceCompatibility versions.java
+        targetCompatibility versions.java
+    }
+
+    kotlinOptions {
+        freeCompilerArgs += [
+            "-Xuse-experimental=kotlinx.coroutines.ExperimentalCoroutinesApi"
+        ]
+    }
+
+    packagingOptions {
+        pickFirst 'META-INF/kotlinx-coroutines-core.kotlin_module'
+    }
+
+    kapt {
+        correctErrorTypes true
+    }
+
+    buildFeatures {
+        viewBinding true
+    }
+
+    buildTypes {
+        debug {
+            buildConfigField 'String', "BaseUrl", Storefront_BaseUrl
+            resValue 'string', "BaseUrl", Storefront_BaseUrl
+            buildConfigField 'String', "ApiKey", getProps("Storefront_ApiKey")
+            resValue 'string', "ApiKey", getProps("Storefront_ApiKey")
+        }
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            buildConfigField 'String', "BaseUrl", Storefront_BaseUrl
+            resValue 'string', "baseUrl", Storefront_BaseUrl
+            buildConfigField 'String', "ApiKey", getProps("Storefront_ApiKey")
+            resValue 'string', "ApiKey", getProps("Storefront_ApiKey")
+        }
+    }
+}
+
+dependencies {
+    implementation fileTree(dir: "libs", include: ["*.jar"])
+    implementation libraries.kotlin.stdlib
+
+    implementation libraries.toothpick.main
+    implementation libraries.toothpick.smoothie.android
+    implementation libraries.toothpick.smoothie.lifecycle
+    implementation libraries.toothpick.smoothie.viewModel
+    kapt libraries.toothpick.compiler
+
+    implementation libraries.android.core
+    implementation libraries.android.appcompat
+
+    implementation libraries.android.arch.common
+    implementation libraries.android.arch.runtime
+
+    implementation libraries.android.lifecycle.liveData
+    implementation libraries.android.lifecycle.viewModel
+    implementation libraries.android.lifecycle.runtime
+    implementation libraries.android.lifecycle.savedState
+    kapt libraries.android.lifecycle.compiler
+
+    implementation libraries.kotlin.coroutines.android
+    implementation libraries.kotlin.coroutines.core
+    implementation libraries.kotlin.coroutines.coreCommon
+    implementation libraries.kotlin.coroutines.coreNative
+    implementation libraries.kotlin.coroutines.test
+
+    implementation libraries.okhttp.main
+    implementation libraries.okhttp.logger
+
+    implementation libraries.retrofit.main
+    implementation libraries.retrofit.gson
+
+    implementation libraries.apollo.client
+    implementation libraries.apollo.coroutines
+    implementation libraries.apollo.android
+
+    implementation libraries.jetbrains.annotations
+
+    testImplementation libraries.android.arch.testing
+
+    testImplementation libraries.toothpick.testing.main
+    testImplementation libraries.toothpick.testing.junit4
+
+    testImplementation libraries.okhttp.mockWebServer
+    testImplementation libraries.retrofit.mock
+
+    testImplementation libraries.test.junit
+    androidTestImplementation libraries.test.runner
+    androidTestImplementation libraries.test.espresso
+
+}

@@ -1,0 +1,38 @@
+// Top-level build file where you can add configuration options common to all sub-projects/modules.
+buildscript {
+    apply from: rootProject.file("dependencies.gradle")
+
+    repositories {
+        google()
+        jcenter()
+    }
+
+    dependencies {
+        classpath classpaths.gradle
+        classpath classpaths.kotlin
+        classpath classpaths.apollo
+    }
+}
+
+
+allprojects {
+    repositories {
+        google()
+        jcenter()
+    }
+}
+
+task clean(type: Delete) {
+    delete rootProject.buildDir
+}
+
+def getProps(String propName) {
+    def propsFile = rootProject.file('local.properties')
+    if (propsFile.exists()) {
+        def props = new Properties()
+        props.load(new FileInputStream(propsFile))
+        return props[propName]
+    } else {
+        return "";
+    }
+}
