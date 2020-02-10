@@ -1,0 +1,8 @@
+query ProductRecommendationsQuery($id: ID!) {
+    productRecommendations(productId: $id) {
+        ... on Product {
+            id
+            title
+        }
+    }
+}

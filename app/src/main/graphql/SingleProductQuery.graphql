@@ -1,0 +1,22 @@
+query SingleProductQuery($id: ID!) {
+    node(id: $id) {
+        __typename
+        ... on Product {
+            id
+            title
+            handle
+            description
+            productType
+            updatedAt
+            priceRange {
+                maxVariantPrice {
+                    ...Money
+                }
+                minVariantPrice {
+                    ...Money
+                }
+            }
+            availableForSale
+        }
+    }
+}

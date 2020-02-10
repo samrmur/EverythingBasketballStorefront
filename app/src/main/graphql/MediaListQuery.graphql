@@ -1,0 +1,18 @@
+query MediaListQuery($id: ID!, $after: String, $first: Int!) {
+    node(id: $id) {
+        __typename
+        ... on Product {
+            media(after: $after, first: $first) {
+                pageInfo {
+                    hasNextPage
+                }
+                edges {
+                    cursor
+                    node {
+                        ...Media
+                    }
+                }
+            }
+        }
+    }
+}
