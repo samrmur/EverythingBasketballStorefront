@@ -90,6 +90,11 @@ dependencies {
     implementation libraries.android.lifecycle.savedState
     kapt libraries.android.lifecycle.compiler
 
+    implementation libraries.android.paging.runtime
+    implementation libraries.android.paging.kotlin
+    implementation libraries.android.paging.testing.common
+    implementation libraries.android.paging.testing.kotlin
+
     implementation libraries.kotlin.coroutines.android
     implementation libraries.kotlin.coroutines.core
     implementation libraries.kotlin.coroutines.coreCommon
