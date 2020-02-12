@@ -2,6 +2,7 @@
 
 package com.shopify.mobile.storefront.domain.pagination
 
+import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.paging.PageKeyedDataSource
 import com.shopify.mobile.storefront.domain.repository.resources.PaginatedResource
@@ -11,35 +12,44 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collect
 import kotlin.coroutines.CoroutineContext
 
-abstract class PaginationManager<Model> : PageKeyedDataSource<String?, Model>(), CoroutineScope {
-    override val coroutineContext: CoroutineContext = Dispatchers.Default + SupervisorJob()
+abstract class PaginationManager<Model> : PageKeyedDataSource<String?, Model>() {
+    private val paginatedScope = object : CoroutineScope {
+        override val coroutineContext: CoroutineContext = Dispatchers.Default + SupervisorJob()
+    }
 
     private val retryCallback = MutableLiveData<RetryCallback>()
-    protected val paginationState = MutableLiveData<PaginationState<Model>>()
+    private val _paginationState = MutableLiveData<PaginationState<Model>>()
+    val paginationState: LiveData<PaginationState<Model>>
+        get() = _paginationState
 
     init {
         /*
          * Mainly needed to handle Apollo cases where query watchers are still active
          */
         addInvalidatedCallback {
-            cancel()
+            paginatedScope.coroutineContext.cancelChildren()
         }
     }
 
     protected abstract suspend fun getDataFlow(first: Int, after: String?): Flow<PaginatedResource<Model>>
 
     override fun loadInitial(params: LoadInitialParams<String?>, callback: LoadInitialCallback<String?, Model>) {
-        launch {
+        paginatedScope.launch {
             getDataFlow(params.requestedLoadSize, null).collect { resource ->
                 when (resource) {
-                    is PaginatedResource.Loading -> paginationState.postValue(PaginationState.LoadingPage(isFirstPage = true))
+                    is PaginatedResource.Loading -> _paginationState.postValue(PaginationState.LoadingPage(isFirstPage = true))
                     is PaginatedResource.Successful -> {
-                        paginationState.postValue(PaginationState.PageLoaded())
-                        callback.onResult(resource.data ?: emptyList(), null, resource.nextCursor)
+                        val data = resource.data
+                        _paginationState.postValue(PaginationState.PageLoaded())
                         setRetry(null)
+
+                        when {
+                            data != null -> callback.onResult(data, null, resource.nextCursor)
+                            else -> callback.onError(IllegalStateException("No data returned by resource!"))
+                        }
                     }
                     is PaginatedResource.Failed -> {
-                        paginationState.postValue(PaginationState.PageError(error = resource.error))
+                        _paginationState.postValue(PaginationState.PageError(error = resource.error))
                         setRetry { loadInitial(params, callback) }
                     }
                 }
@@ -48,17 +58,22 @@ abstract class PaginationManager<Model> : PageKeyedDataSource<String?, Model>(),
     }
 
     override fun loadAfter(params: LoadParams<String?>, callback: LoadCallback<String?, Model>) {
-        launch {
+        paginatedScope.launch {
             getDataFlow(params.requestedLoadSize, params.key).collect { resource ->
                 when (resource) {
-                    is PaginatedResource.Loading -> paginationState.postValue(PaginationState.LoadingPage(isFirstPage = false))
+                    is PaginatedResource.Loading -> _paginationState.postValue(PaginationState.LoadingPage(isFirstPage = false))
                     is PaginatedResource.Successful -> {
-                        paginationState.postValue(PaginationState.PageLoaded())
-                        callback.onResult(resource.data ?: emptyList(), resource.nextCursor)
+                        val data = resource.data
+                        _paginationState.postValue(PaginationState.PageLoaded())
                         setRetry(null)
+
+                        when {
+                            data == null -> callback.onError(IllegalStateException("No data returned by resource!"))
+                            resource.hasNextPage -> callback.onResult(data, resource.nextCursor)
+                        }
                     }
                     is PaginatedResource.Failed -> {
-                        paginationState.postValue(PaginationState.PageError(error = resource.error))
+                        _paginationState.postValue(PaginationState.PageError(error = resource.error))
                         setRetry { loadAfter(params, callback) }
                     }
                 }
@@ -75,22 +90,15 @@ abstract class PaginationManager<Model> : PageKeyedDataSource<String?, Model>(),
      */
     fun retry() {
         retryCallback.value?.let { retry ->
-            this.launch(coroutineContext) { retry() }
+            paginatedScope.launch { retry() }
         }
-    }
-
-    /**
-     * Cancels all paging operations
-     */
-    fun cancel() {
-        coroutineContext.cancelChildren()
     }
 
     /**
      * Sets the retry action
      * @action Action
      */
-    protected fun setRetry(action: RetryCallback?) {
+    private fun setRetry(action: RetryCallback?) {
         retryCallback.postValue(action)
     }
 }
