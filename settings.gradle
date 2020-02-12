@@ -1,2 +1,2 @@
-include ':app'
-rootProject.name = "Basketball Storefront"
+include ':Storefront'
+rootProject.name = "Storefront"
